@@ -69,6 +69,15 @@ const activityEnd = document.getElementById('activityEnd');
 const activityDay = document.getElementById('activityDay');
 const addActivityBtn = document.getElementById('addActivityBtn');
 
+// === NUEVOS ELEMENTOS v2.5 ===
+const noEndTimeCheckbox = document.getElementById('noEndTimeCheckbox');
+const repeatActivityCheckbox = document.getElementById('repeatActivityCheckbox');
+const repeatOptionsContainer = document.getElementById('repeatOptionsContainer');
+const dayRepeatCheckboxes = document.querySelectorAll('.day-repeat-checkbox');
+const repeatDurationOptions = document.querySelectorAll('input[name="repeatDuration"]');
+const repeatEndDateInput = document.getElementById('repeatEndDate');
+const endDateContainer = document.getElementById('endDateContainer');
+
 const breakToggle = document.getElementById('breakToggle');
 const breakDurationContainer = document.getElementById('breakDurationContainer');
 const durationBtns = document.querySelectorAll('.duration-btn');
@@ -142,7 +151,12 @@ const StorageManager = {
                 id: Date.now(),
                 name: activity.name,
                 start: activity.start,
-                end: activity.end,
+                end: activity.end || null,
+                noEndTime: activity.noEndTime || false,
+                repetitive: activity.repetitive || false,
+                repeatDays: activity.repeatDays || [],
+                repeatType: activity.repeatType || 'forever',
+                repeatEndDate: activity.repeatEndDate || null,
                 startedAt: null,
                 completed: false
             });
@@ -165,6 +179,31 @@ const StorageManager = {
         const profile = this.getProfile(profileName);
         if (profile) {
             profile.schedule[day] = profile.schedule[day].filter(a => a.id !== activityId);
+            this.saveProfile(profile);
+        }
+    },
+
+    applyRepetition(profileName, activityData, days) {
+        const profile = this.getProfile(profileName);
+        if (profile && days.length > 0) {
+            days.forEach(day => {
+                const dayNum = parseInt(day);
+                if (profile.schedule[dayNum] !== undefined) {
+                    profile.schedule[dayNum].push({
+                        id: Date.now() + Math.random(),
+                        name: activityData.name,
+                        start: activityData.start,
+                        end: activityData.end || null,
+                        noEndTime: activityData.noEndTime || false,
+                        repetitive: activityData.repetitive || false,
+                        repeatDays: activityData.repeatDays || [],
+                        repeatType: activityData.repeatType || 'forever',
+                        repeatEndDate: activityData.repeatEndDate || null,
+                        startedAt: null,
+                        completed: false
+                    });
+                }
+            });
             this.saveProfile(profile);
         }
     },
@@ -322,9 +361,21 @@ function loadSchedule() {
     const adjustment = StorageManager.getAdjustment(currentProfile.name, `${currentDay}-${new Date().toISOString().split('T')[0]}`);
     const currentMin = getCurrentMinutes();
 
-    schedule.forEach(activity => {
+    schedule.forEach((activity, index) => {
         const startMin = timeToMinutes(activity.start) + adjustment;
-        const endMin = timeToMinutes(activity.end) + adjustment;
+        
+        // Calcular endMin considerando actividades sin hora de fin
+        let endMin;
+        if (activity.noEndTime) {
+            // Si no tiene hora de fin, buscar la siguiente actividad
+            if (index + 1 < schedule.length) {
+                endMin = timeToMinutes(schedule[index + 1].start) + adjustment;
+            } else {
+                endMin = 1440; // Fin del día
+            }
+        } else {
+            endMin = timeToMinutes(activity.end || activity.start) + adjustment;
+        }
         
         const isCurrentActivity = currentMin >= startMin && currentMin < endMin;
 
@@ -335,16 +386,39 @@ function loadSchedule() {
         if (isCurrentActivity) {
             tr.classList.add('current');
         }
+        if (activity.repetitive) {
+            tr.classList.add('repetitive');
+        }
+        if (activity.noEndTime) {
+            tr.classList.add('no-end-time');
+        }
 
         const startTime = minutesToTime(startMin);
-        const endTime = minutesToTime(endMin);
+        let endDisplay;
+        if (activity.noEndTime) {
+            endDisplay = '∞';
+        } else {
+            endDisplay = minutesToTime(endMin);
+        }
+
+        // Crear indicadores
+        let activityNameDisplay = activity.name;
+        let badges = '';
+        if (activity.repetitive) {
+            badges += '<span class="repetitive-badge">🔄 Repetitiva</span>';
+        }
+        if (activity.noEndTime) {
+            badges += '<span class="no-end-badge">∞ Sin fin</span>';
+        }
+
+        const nameHTML = badges ? `<div class="activity-name-with-badges">${activity.name}${badges}</div>` : activity.name;
 
         tr.innerHTML = `
             <td>${startTime}</td>
-            <td>${endTime}</td>
-            <td>${activity.name}</td>
+            <td>${endDisplay}</td>
+            <td>${nameHTML}</td>
             <td class="action-cell">
-                <button class="btn btn-small" onclick="editActivity(${activity.id}, '${activity.name}', '${activity.start}', '${activity.end}')">✏️</button>
+                <button class="btn btn-small" onclick="editActivity(${activity.id}, '${activity.name}', '${activity.start}', '${activity.end || ''}')">✏️</button>
                 <button class="btn btn-small btn-danger" onclick="deleteActivityRow(${activity.id})">🗑️</button>
             </td>
         `;
@@ -357,6 +431,11 @@ function insertBreakTime(schedule) {
     const result = [];
     for (let i = 0; i < schedule.length - 1; i++) {
         result.push(schedule[i]);
+        
+        // Si la actividad actual no tiene hora de fin, no agregar tiempo libre
+        if (schedule[i].noEndTime) {
+            continue;
+        }
         
         const endMin = timeToMinutes(schedule[i].end);
         const nextMin = timeToMinutes(schedule[i + 1].start);
@@ -390,10 +469,44 @@ function deleteActivityRow(activityId) {
 }
 
 function editActivity(id, name, start, end) {
-    activityName.value = name;
-    activityStart.value = start;
-    activityEnd.value = end;
+    // Buscar la actividad completa
+    const activity = currentProfile.schedule[currentDay].find(a => a.id === id);
+    if (!activity) return;
+
+    // Cargar datos básicos
+    activityName.value = activity.name;
+    activityStart.value = activity.start;
+    activityEnd.value = activity.end || '';
     activityDay.value = currentDay;
+
+    // Cargar datos de sin hora de fin
+    noEndTimeCheckbox.checked = activity.noEndTime || false;
+    activityEnd.disabled = activity.noEndTime || false;
+
+    // Cargar datos de repetición
+    repeatActivityCheckbox.checked = activity.repetitive || false;
+    repeatOptionsContainer.style.display = (activity.repetitive || false) ? 'block' : 'none';
+
+    if (activity.repetitive) {
+        // Cargar días seleccionados
+        dayRepeatCheckboxes.forEach(cb => {
+            cb.checked = (activity.repeatDays || []).includes(cb.value);
+        });
+
+        // Cargar tipo de repetición
+        document.querySelectorAll('input[name="repeatDuration"]').forEach(radio => {
+            radio.checked = radio.value === (activity.repeatType || 'forever');
+        });
+
+        // Cargar fecha límite
+        if (activity.repeatEndDate) {
+            repeatEndDateInput.value = activity.repeatEndDate;
+            endDateContainer.style.display = activity.repeatType === 'until' ? 'block' : 'none';
+        } else {
+            endDateContainer.style.display = 'none';
+        }
+    }
+
     addActivityBtn.dataset.editId = id;
     activityName.focus();
 }
@@ -406,31 +519,77 @@ function addActivity() {
     const start = activityStart.value;
     const end = activityEnd.value;
     const day = parseInt(activityDay.value);
+    const noEndTime = noEndTimeCheckbox.checked;
+    const isRepetitive = repeatActivityCheckbox.checked;
 
-    if (!name || !start || !end) {
-        alert('Por favor completa todos los campos');
+    if (!name || !start) {
+        alert('Por favor completa el nombre y la hora de inicio');
         return;
     }
 
-    if (timeToMinutes(start) >= timeToMinutes(end)) {
+    // Validar hora de fin si no es "sin hora de fin"
+    if (!noEndTime && !end) {
+        alert('Por favor selecciona la hora de fin o marca "sin hora de fin"');
+        return;
+    }
+
+    // Validar que hora inicio < hora fin
+    if (!noEndTime && timeToMinutes(start) >= timeToMinutes(end)) {
         alert('La hora de fin debe ser posterior a la de inicio');
         return;
     }
 
+    // Validar repetición
+    let selectedRepeatDays = [];
+    if (isRepetitive) {
+        selectedRepeatDays = Array.from(dayRepeatCheckboxes)
+            .filter(cb => cb.checked)
+            .map(cb => cb.value);
+
+        if (selectedRepeatDays.length === 0) {
+            alert('Selecciona al menos un día para la repetición');
+            return;
+        }
+    }
+
+    const activityData = {
+        name,
+        start,
+        end: end || null,
+        noEndTime,
+        repetitive: isRepetitive,
+        repeatDays: selectedRepeatDays,
+        repeatType: document.querySelector('input[name="repeatDuration"]:checked')?.value || 'forever',
+        repeatEndDate: repeatEndDateInput.value || null
+    };
+
     const editId = addActivityBtn.dataset.editId;
     
     if (editId) {
-        StorageManager.updateActivity(currentProfile.name, currentDay, parseInt(editId), {
-            name, start, end
-        });
+        // Modo edición - actualizar la actividad existente
+        StorageManager.updateActivity(currentProfile.name, currentDay, parseInt(editId), activityData);
         delete addActivityBtn.dataset.editId;
     } else {
-        StorageManager.addActivity(currentProfile.name, day, { name, start, end });
+        // Modo crear - si es repetitiva, agregar a todos los días seleccionados
+        if (isRepetitive) {
+            StorageManager.applyRepetition(currentProfile.name, activityData, selectedRepeatDays);
+        } else {
+            StorageManager.addActivity(currentProfile.name, day, activityData);
+        }
     }
 
+    // Limpiar formulario
     activityName.value = '';
     activityStart.value = '';
     activityEnd.value = '';
+    noEndTimeCheckbox.checked = false;
+    repeatActivityCheckbox.checked = false;
+    activityEnd.disabled = false;
+    repeatOptionsContainer.style.display = 'none';
+    dayRepeatCheckboxes.forEach(cb => cb.checked = false);
+    repeatEndDateInput.value = '';
+    endDateContainer.style.display = 'none';
+    repeatDurationOptions[0].checked = true;
     addActivityBtn.textContent = 'Agregar';
     
     currentProfile = StorageManager.getProfile(currentProfile.name);
@@ -447,9 +606,21 @@ function updateUI() {
 
     let currentActivity = null;
     
-    for (let activity of schedule) {
+    for (let i = 0; i < schedule.length; i++) {
+        const activity = schedule[i];
         const startMin = timeToMinutes(activity.start) + adjustment;
-        const endMin = timeToMinutes(activity.end) + adjustment;
+        
+        // Para actividades sin hora de fin, buscar la siguiente actividad
+        let endMin;
+        if (activity.noEndTime) {
+            if (i + 1 < schedule.length) {
+                endMin = timeToMinutes(schedule[i + 1].start) + adjustment;
+            } else {
+                endMin = 1440; // Fin del día
+            }
+        } else {
+            endMin = timeToMinutes(activity.end) + adjustment;
+        }
         
         if (currentMin >= startMin && currentMin < endMin) {
             currentActivity = { ...activity, startMin, endMin };
@@ -460,8 +631,15 @@ function updateUI() {
     if (currentActivity) {
         currentActivityName.textContent = currentActivity.name;
         const startTime = minutesToTime(currentActivity.startMin);
-        const endTime = minutesToTime(currentActivity.endMin);
-        activityTime.textContent = `${startTime} a ${endTime}`;
+        
+        let timeDisplay;
+        if (currentActivity.noEndTime) {
+            timeDisplay = `${startTime} — Sin fin definido`;
+        } else {
+            const endTime = minutesToTime(currentActivity.endMin);
+            timeDisplay = `${startTime} a ${endTime}`;
+        }
+        activityTime.textContent = timeDisplay;
 
         progressCard.style.display = 'block';
         progressActivityName.textContent = currentActivity.name;
@@ -472,8 +650,11 @@ function updateUI() {
         
         progressFill.style.width = percentage + '%';
         
-        const remainingMins = Math.max(0, currentActivity.endMin - currentMin);
-        progressTime.textContent = `${minutesToTime(elapsed * 60)} / ${minutesToTime(duration * 60)}`;
+        if (currentActivity.noEndTime) {
+            progressTime.textContent = `${minutesToTime(elapsed * 60)} / Sin fin`;
+        } else {
+            progressTime.textContent = `${minutesToTime(elapsed * 60)} / ${minutesToTime(duration * 60)}`;
+        }
 
         showAlerts(currentActivity, elapsed);
     } else {
@@ -678,6 +859,29 @@ activityName.addEventListener('keypress', (e) => {
 });
 
 startActivityBtn.addEventListener('click', startActivity);
+
+// ===== EVENT LISTENERS v2.5 - REPETICIÓN Y SIN HORA DE FIN =====
+noEndTimeCheckbox.addEventListener('change', (e) => {
+    activityEnd.disabled = e.target.checked;
+    if (e.target.checked) activityEnd.value = '';
+});
+
+repeatActivityCheckbox.addEventListener('change', (e) => {
+    repeatOptionsContainer.style.display = e.target.checked ? 'block' : 'none';
+    if (!e.target.checked) {
+        dayRepeatCheckboxes.forEach(cb => cb.checked = false);
+        repeatEndDateInput.value = '';
+        endDateContainer.style.display = 'none';
+        repeatDurationOptions[0].checked = true;
+    }
+});
+
+repeatDurationOptions.forEach(option => {
+    option.addEventListener('change', (e) => {
+        endDateContainer.style.display = e.target.value === 'until' ? 'block' : 'none';
+        if (e.target.value === 'forever') repeatEndDateInput.value = '';
+    });
+});
 
 // ===== LÓGICA DEL TUTORIAL =====
 const tutorialBtn = document.getElementById('tutorialBtn');
@@ -1200,3 +1404,4 @@ clearHistoryBtn.addEventListener('click', () => {
 
 // ===== INICIALIZACIÓN =====
 loadProfiles();
+
