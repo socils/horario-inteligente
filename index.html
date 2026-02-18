@@ -108,6 +108,81 @@
                         </select>
                     </div>
 
+                    <!-- OPCIÓN: SIN HORA DE FIN -->
+                    <div class="checkbox-group">
+                        <label class="checkbox-label">
+                            <input type="checkbox" id="noEndTimeCheckbox">
+                            <span class="checkbox-text">Esta actividad no tiene hora de fin</span>
+                        </label>
+                    </div>
+
+                    <!-- REPETICIÓN DE ACTIVIDAD -->
+                    <div class="repetition-section">
+                        <div class="checkbox-group">
+                            <label class="checkbox-label">
+                                <input type="checkbox" id="repeatActivityCheckbox">
+                                <span class="checkbox-text">Repetir actividad</span>
+                            </label>
+                        </div>
+
+                        <div id="repeatOptionsContainer" style="display: none;" class="repeat-options">
+                            <!-- Selección de días -->
+                            <fieldset class="days-fieldset">
+                                <legend>Días de la semana:</legend>
+                                <div class="days-checkboxes">
+                                    <label class="day-checkbox">
+                                        <input type="checkbox" class="day-repeat-checkbox" value="1">
+                                        <span>Lunes</span>
+                                    </label>
+                                    <label class="day-checkbox">
+                                        <input type="checkbox" class="day-repeat-checkbox" value="2">
+                                        <span>Martes</span>
+                                    </label>
+                                    <label class="day-checkbox">
+                                        <input type="checkbox" class="day-repeat-checkbox" value="3">
+                                        <span>Miércoles</span>
+                                    </label>
+                                    <label class="day-checkbox">
+                                        <input type="checkbox" class="day-repeat-checkbox" value="4">
+                                        <span>Jueves</span>
+                                    </label>
+                                    <label class="day-checkbox">
+                                        <input type="checkbox" class="day-repeat-checkbox" value="5">
+                                        <span>Viernes</span>
+                                    </label>
+                                    <label class="day-checkbox">
+                                        <input type="checkbox" class="day-repeat-checkbox" value="6">
+                                        <span>Sábado</span>
+                                    </label>
+                                    <label class="day-checkbox">
+                                        <input type="checkbox" class="day-repeat-checkbox" value="0">
+                                        <span>Domingo</span>
+                                    </label>
+                                </div>
+                            </fieldset>
+
+                            <!-- Duración de la repetición -->
+                            <fieldset class="duration-fieldset">
+                                <legend>Duración de la repetición:</legend>
+                                <div class="duration-options">
+                                    <label class="radio-label">
+                                        <input type="radio" name="repeatDuration" value="forever" checked>
+                                        <span>Para siempre</span>
+                                    </label>
+                                    <label class="radio-label">
+                                        <input type="radio" name="repeatDuration" value="until">
+                                        <span>Hasta una fecha límite</span>
+                                    </label>
+                                </div>
+
+                                <div id="endDateContainer" style="display: none;" class="date-input-group">
+                                    <label for="repeatEndDate">Fecha límite:</label>
+                                    <input type="date" id="repeatEndDate" class="input-field">
+                                </div>
+                            </fieldset>
+                        </div>
+                    </div>
+
                     <button id="addActivityBtn" class="btn btn-success">Agregar</button>
                 </div>
             </div>
@@ -217,7 +292,7 @@
     <div id="tutorialModal" class="modal" style="display: none;">
         <div class="modal-content tutorial-modal-content">
             <div class="tutorial-header">
-                <h2>⚡ Guía Rápida - Horario Inteligente v2</h2>
+                <h2>⚡ Guía Rápida - Horario Inteligente v2.5</h2>
                 <button id="closeTutorialBtn" class="btn-close">✕</button>
             </div>
             <div class="tutorial-content">
@@ -228,23 +303,26 @@
                     <button class="tutorial-tab" data-step="2">📋 Agregar Actividad</button>
                     <button class="tutorial-tab" data-step="3">▶️ Activar</button>
                     <button class="tutorial-tab" data-step="4">📊 Estadísticas</button>
+                    <button class="tutorial-tab" data-step="5">✨ v2.5</button>
                 </div>
 
                 <!-- Contenido de pasos -->
                 <div class="tutorial-steps">
                     <!-- Paso 0: Inicio -->
                     <div class="tutorial-step active" data-step="0">
-                        <h3>🎯 Qué Cambió en v2</h3>
+                        <h3>🎯 Horario Inteligente v2.5</h3>
+                        <p><strong>Evolución del sistema:</strong></p>
                         <ul>
                             <li><strong>v1:</strong> Temporizador manual ❌</li>
                             <li><strong>v2:</strong> Horario automático por hora real ✅</li>
-                            <li><strong>v1:</strong> Lista de actividades ❌</li>
-                            <li><strong>v2:</strong> Tabla tipo horario escolar ✅</li>
-                            <li><strong>NUEVO:</strong> Detección automática de actividad actual</li>
-                            <li><strong>NUEVO:</strong> Ajuste automático por retrasos</li>
-                            <li><strong>NUEVO:</strong> Estadísticas de puntualidad</li>
-                            <li><strong>NUEVO:</strong> Sistema semanal (7 días)</li>
+                            <li><strong>v2:</strong> Detección automática de actividad actual</li>
+                            <li><strong>v2:</strong> Ajuste automático por retrasos</li>
+                            <li><strong>v2:</strong> Estadísticas de puntualidad</li>
+                            <li><strong>v2.5:</strong> Actividades repetitivas 🔄</li>
+                            <li><strong>v2.5:</strong> Actividades sin hora de fin ∞</li>
+                            <li><strong>v2.5:</strong> Rutinas automáticas diarias</li>
                         </ul>
+                        <p><em>Aprende sobre las nuevas funciones en la pestaña "v2.5"</em></p>
                     </div>
 
                     <!-- Paso 1: Crear Perfil -->
@@ -292,6 +370,36 @@
                             <li>⏰ Actividades con retraso</li>
                             <li>📈 Promedio de retraso</li>
                             <li>🎯 Ajuste automático del horario</li>
+                        </ul>
+                    </div>
+
+                    <!-- Paso 5: Novedades v2.5 -->
+                    <div class="tutorial-step" data-step="5">
+                        <h3>✨ NUEVO en v2.5</h3>
+                        
+                        <h4 style="margin-top: 15px; color: #3498db; font-weight: 600;">🔄 Actividades Repetitivas</h4>
+                        <p>Crea actividades que se repiten automáticamente:</p>
+                        <ul style="font-size: 13px;">
+                            <li><strong>Selecciona días:</strong> Lun, Mié, Vie</li>
+                            <li><strong>Duración:</strong> Para siempre o fecha límite</li>
+                            <li><strong>Automático:</strong> Aparecerá en todos los días</li>
+                            <li><strong>Ej:</strong> Reunión, Clase, Gym</li>
+                        </ul>
+
+                        <h4 style="margin-top: 15px; color: #9b59b6; font-weight: 600;">∞ Actividades Sin Fin</h4>
+                        <p>Para actividades de duración variable:</p>
+                        <ul style="font-size: 13px;">
+                            <li><strong>Marca:</strong> checkbox "Sin hora de fin"</li>
+                            <li><strong>Muestra:</strong> Desde HH:MM — Sin fin</li>
+                            <li><strong>Duración:</strong> Hasta la siguiente actividad</li>
+                            <li><strong>Ej:</strong> Dormir, Estudiar, Descanso</li>
+                        </ul>
+
+                        <h4 style="margin-top: 12px; color: #27ae60; font-weight: 600;">📌 Indicadores</h4>
+                        <p style="font-size: 12px; margin: 8px 0;">Vélos en la tabla del horario:</p>
+                        <ul style="font-size: 12px;">
+                            <li><strong>🔄 Repetitiva:</strong> Se repite varios días</li>
+                            <li><strong>∞ Sin fin:</strong> Sin hora final fija</li>
                         </ul>
                     </div>
                 </div>
